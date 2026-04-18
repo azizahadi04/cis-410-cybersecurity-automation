@@ -1,0 +1,30 @@
+name: Hello Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  pipeline:
+    name: Run Pipeline Stages
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build stage
+        run: |
+          echo "=== BUILD STAGE ==="
+          echo "Runner hostname: $(hostname)"
+
+      - name: Test stage
+        run: |
+          echo "=== TEST STAGE ==="
+          echo "All checks passed!"
+
+      - name: Deploy stage
+        run: |
+          echo "=== DEPLOY STAGE ==="
+          echo "Pipeline completed successfully!"
