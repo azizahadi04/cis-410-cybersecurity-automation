@@ -1,0 +1,32 @@
+name: Deploy - Dev
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Configure SSH key
+        run: |
+          echo "${{ secrets.DEV_SSH_KEY }}" > /tmp/deploy_key
+          chmod 600 /tmp/deploy_key
+
+      - name: Copy app files to Dev VM
+        run: |
+          ssh -o StrictHostKeyChecking=no -i /tmp/deploy_key ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }} "mkdir -p /opt/app"
+
+          scp -o StrictHostKeyChecking=no -i /tmp/deploy_key -r ./* ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:/opt/app/
+
+      - name: Run app
+        run: |
+          ssh -o StrictHostKeyChecking=no -i /tmp/deploy_key ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }} << 'EOF'
+            cd /opt/app
+            python3 app.py &
+          EOF
+
+      - name: Cleanup
+        run: rm /tmp/deploy_key

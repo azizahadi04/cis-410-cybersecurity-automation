@@ -1,0 +1,34 @@
+name: Setup - Dev Server
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup-dev:
+    runs-on: self-hosted
+
+    steps:
+      - name: Configure SSH key
+        run: |
+          echo "${{ secrets.DEV_SSH_KEY }}" > /tmp/deploy_key
+          chmod 600 /tmp/deploy_key
+
+      - name: Install Docker on Dev VM
+        run: |
+          ssh -o StrictHostKeyChecking=no -i /tmp/deploy_key ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }} << 'EOF'
+            echo "== Updating system =="
+            sudo apt update -y
+
+            echo "== Installing Docker =="
+            sudo apt install -y docker.io
+
+            echo "== Starting Docker =="
+            sudo systemctl start docker
+            sudo systemctl enable docker
+
+            echo "== Docker version =="
+            docker --version
+          EOF
+
+      - name: Cleanup
+        run: rm /tmp/deploy_key
