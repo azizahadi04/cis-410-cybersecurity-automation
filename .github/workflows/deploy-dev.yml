@@ -17,7 +17,7 @@ jobs:
 
       - name: Copy app files to Dev VM
         run: |
-          ssh -o StrictHostKeyChecking=no -i /tmp/deploy_key ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }} "sudo mkdir -p /opt/app"
+          ssh -o StrictHostKeyChecking=no -i /tmp/deploy_key ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }} "sudo mkdir -p /opt/app && sudo chown -R $USER:$USER /opt/app"
 
           scp -o StrictHostKeyChecking=no -i /tmp/deploy_key -r ./* ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:/opt/app/
 
