@@ -1,50 +1,36 @@
-# Dockerfile.vulnerable
+# Dockerfile  —  CorpDirectory SECURE (Week 5)
 # ─────────────────────────────────────────────────────────────────────────────
-# INTENTIONALLY INSECURE — for Week 4 observation and Week 5 scanning exercise.
-# Do NOT use this Dockerfile for staging or production.
+# FIXES from Dockerfile.vulnerable:
 #
-# HOW TO USE:
-#   Before deploying, copy the vulnerable app files into app/ first:
-#     cp vulnerable_app/app.py app/app.py
-#     cp vulnerable_app/requirements.txt app/requirements.txt
-#     cp -r vulnerable_app/templates/. app/templates/
-#   Then swap this file over the main Dockerfile:
-#     cp Dockerfile.vulnerable Dockerfile
-#   Then commit and push.
+#   1. FROM python:3.11-slim        ← pinned slim image (reduces attack surface + CVEs)
+#      was: FROM python:3.11        ← full image, hundreds of extra packages
 #
-#   The deploy workflow copies app/ and Dockerfile to the VM.
-#   app/ now contains the vulnerable app files.
+#   2. Deps layer BEFORE source     ← correct cache ordering
+#      COPY requirements.txt first, pip install, THEN copy app source
+#      was: COPY . . first          ← every code change invalidates the dep cache
 #
-# Violations present for Week 5 scanners to detect:
-#
-#   VIOLATION 1: Unpinned base image — 'python:3.11' instead of 'python:3.11-slim'
-#   The full image is ~900MB vs ~120MB for slim. 'python:3.11' resolves to a
-#   different digest on every pull — builds are not reproducible and may
-#   silently include new vulnerabilities. Trivy will report CVEs.
-#
-#   VIOLATION 2: Source code copied before dependencies (no layer caching)
-#   COPY . . copies everything before pip install runs. Every push rebuilds
-#   from scratch — no caching.
-#
-#   VIOLATION 3: No USER instruction — container runs as root (UID 0)
-#   If the app has a code execution vulnerability, attacker gets root inside
-#   the container. Trivy and Semgrep will both flag this.
-#   Verify: docker compose exec web whoami  →  returns 'root' not 'appuser'
+#   3. Non-root user                ← container does not run as root
+#      RUN adduser --disabled-password appuser
+#      USER appuser
+#      was: no USER instruction     ← process ran as root inside the container
 # ─────────────────────────────────────────────────────────────────────────────
 
-# VIOLATION 1: Unpinned base image
-FROM python:3.11
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# VIOLATION 2: Copy everything before installing dependencies — no layer caching
-COPY . .
+# Install dependencies first — this layer is cached unless requirements.txt changes
+COPY app/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# app/requirements.txt is populated by copying vulnerable_app/requirements.txt
-# into app/ before committing (see HOW TO USE above)
-RUN pip install --no-cache-dir -r app/requirements.txt
+# Copy application source after dependencies
+COPY app/ .
+
+# Create a non-root user and switch to it
+# Security: if the container is compromised, the attacker has no root privileges
+RUN adduser --disabled-password --gecos "" appuser
+USER appuser
 
 EXPOSE 5000
 
-# VIOLATION 3: No USER instruction — runs as root
-CMD ["python", "app/app.py"]
+CMD ["python", "app.py"]
