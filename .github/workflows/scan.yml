@@ -40,7 +40,7 @@ jobs:
           ./snyk --version
 
       - name: Snyk Code scan (SAST)
-        run: ./snyk code test --severity-threshold=high app/
+        run: ./snyk code test app/
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
